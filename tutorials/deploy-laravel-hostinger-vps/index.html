@@ -1,0 +1,199 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>How to Deploy Laravel on a Hostinger VPS (Nginx, PHP 8.3, MySQL, Redis, Queues) | Laravel Hosting Notes</title><meta name="description" content="Step-by-step, production-ready guide to deploying a Laravel app on a Hostinger KVM VPS with Ubuntu, Nginx, PHP-FPM, MySQL, Redis, Supervisor and free SSL."><link rel="stylesheet" href="/laravel-hosting-notes/style.css"></head><body><header><a class="brand" href="/laravel-hosting-notes/">Laravel Hosting Notes</a><nav><a href="/laravel-hosting-notes/">Articles</a><a href="/laravel-hosting-notes/about/">About</a></nav></header><main><article><p class="meta">By Ahmed Esa</p><h1>How to Deploy Laravel on a Hostinger VPS (Nginx, PHP 8.3, MySQL, Redis, Queues)</h1><aside class="disclosure"><strong>Affiliate disclosure:</strong> some links in this article are affiliate links. If you sign up through them I may earn a commission at no extra cost to you. It doesn't change what I recommend, and I list the downsides too. <a href="/laravel-hosting-notes/disclosure/">More details</a>.</aside><p>This is the exact process I use to put a Laravel app into production on a fresh VPS. It takes about 30-45 minutes the first time. By the end you&#39;ll have:</p>
+<ul>
+<li>Ubuntu with a firewall and a non-root deploy user</li>
+<li>Nginx + PHP-FPM 8.3 + OPcache</li>
+<li>MySQL 8 and Redis</li>
+<li>Your app deployed from Git</li>
+<li>Queue workers managed by Supervisor</li>
+<li>The scheduler running via cron</li>
+<li>Free HTTPS from Let&#39;s Encrypt</li>
+</ul>
+<p>I&#39;m using a <!-- AFFILIATE:hostinger --><a href="https://www.hostinger.com/vps-hosting" rel="sponsored noopener" target="_blank">Hostinger KVM VPS</a> because it&#39;s cheap for the specs, but any Ubuntu 24.04 server works.</p>
+<h2>Step 0: Choose the VPS and OS</h2>
+<p>For a small production app, 1-2 vCPU and 2-4 GB RAM is comfortable when MySQL and Redis run on the same machine. In the Hostinger panel, choose a plain <strong>Ubuntu 24.04</strong> template (not a control-panel template, we&#39;ll configure things ourselves). Pick the data center closest to your users.</p>
+<p>Add your SSH public key during setup so you never need password logins.</p>
+<h2>Step 1: Secure the server</h2>
+<p>SSH in as root:</p>
+<pre><code class="language-bash">ssh root@YOUR_SERVER_IP
+apt update &amp;&amp; apt upgrade -y
+adduser deploy
+usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
+</code></pre>
+<p>Disable root and password login in <code>/etc/ssh/sshd_config</code>:</p>
+<pre><code>PermitRootLogin no
+PasswordAuthentication no
+</code></pre>
+<pre><code class="language-bash">systemctl restart ssh
+ufw allow OpenSSH
+ufw allow &#39;Nginx Full&#39;   # run after installing nginx, or allow 80/443
+ufw enable
+</code></pre>
+<p>From now on, log in as <code>deploy</code>.</p>
+<h2>Step 2: Install Nginx, PHP 8.3 and extensions</h2>
+<p>Ubuntu 24.04 ships PHP 8.3, so no extra repository is needed:</p>
+<pre><code class="language-bash">sudo apt install -y nginx php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring \
+  php8.3-xml php8.3-bcmath php8.3-curl php8.3-zip php8.3-intl php8.3-redis \
+  php8.3-gd unzip git
+</code></pre>
+<p>Install Composer:</p>
+<pre><code class="language-bash">curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+</code></pre>
+<p>Tune OPcache in <code>/etc/php/8.3/fpm/conf.d/10-opcache.ini</code>:</p>
+<pre><code>opcache.enable=1
+opcache.memory_consumption=256
+opcache.max_accelerated_files=20000
+opcache.validate_timestamps=0
+</code></pre>
+<p><code>validate_timestamps=0</code> means PHP won&#39;t check files for changes, fast, but you must reload PHP-FPM on each deploy (we&#39;ll do that).</p>
+<h2>Step 3: MySQL and Redis</h2>
+<pre><code class="language-bash">sudo apt install -y mysql-server redis-server
+sudo mysql_secure_installation
+sudo mysql
+</code></pre>
+<pre><code class="language-sql">CREATE DATABASE myapp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER &#39;myapp&#39;@&#39;localhost&#39; IDENTIFIED BY &#39;a-long-random-password&#39;;
+GRANT ALL PRIVILEGES ON myapp.* TO &#39;myapp&#39;@&#39;localhost&#39;;
+FLUSH PRIVILEGES;
+</code></pre>
+<p>Redis listens on localhost by default, keep it that way. Make sure <code>supervised systemd</code> is set in <code>/etc/redis/redis.conf</code>, then <code>sudo systemctl restart redis</code>.</p>
+<h2>Step 4: Get your code onto the server</h2>
+<pre><code class="language-bash">sudo mkdir -p /var/www/myapp
+sudo chown deploy:www-data /var/www/myapp
+cd /var/www/myapp
+git clone git@github.com:you/myapp.git .
+composer install --no-dev --optimize-autoloader
+cp .env.example .env
+php artisan key:generate
+</code></pre>
+<p>Edit <code>.env</code>:</p>
+<pre><code>APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://example.com
+DB_DATABASE=myapp
+DB_USERNAME=myapp
+DB_PASSWORD=a-long-random-password
+CACHE_STORE=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+</code></pre>
+<p>Permissions and first build:</p>
+<pre><code class="language-bash">sudo chown -R deploy:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+php artisan migrate --force
+php artisan storage:link
+php artisan optimize
+</code></pre>
+<p>(Build frontend assets with <code>npm ci &amp;&amp; npm run build</code> locally or in CI, or install Node on the server.)</p>
+<p><strong>Never set <code>APP_DEBUG=true</code> in production</strong>, it leaks environment variables on error pages.</p>
+<h2>Step 5: Configure Nginx</h2>
+<p>Create <code>/etc/nginx/sites-available/myapp</code>:</p>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name example.com www.example.com;
+    root /var/www/myapp/public;
+    index index.php;
+
+    add_header X-Frame-Options &quot;SAMEORIGIN&quot;;
+    add_header X-Content-Type-Options &quot;nosniff&quot;;
+    charset utf-8;
+    client_max_body_size 20M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+</code></pre>
+<pre><code class="language-bash">sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx
+</code></pre>
+<p>Point your domain&#39;s A record to the VPS IP, then visit <code>http://example.com</code>.</p>
+<h2>Step 6: Free SSL with Let&#39;s Encrypt</h2>
+<pre><code class="language-bash">sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d example.com -d www.example.com
+</code></pre>
+<p>Certbot edits the Nginx config, adds an HTTP→HTTPS redirect, and installs a renewal timer. Test it with <code>sudo certbot renew --dry-run</code>.</p>
+<h2>Step 7: Queue workers with Supervisor</h2>
+<pre><code class="language-bash">sudo apt install -y supervisor
+</code></pre>
+<p><code>/etc/supervisor/conf.d/myapp-worker.conf</code>:</p>
+<pre><code class="language-ini">[program:myapp-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/myapp/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+user=deploy
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/www/myapp/storage/logs/worker.log
+stopwaitsecs=3600
+</code></pre>
+<pre><code class="language-bash">sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl status
+</code></pre>
+<p>If you use Horizon, replace the command with <code>php artisan horizon</code> and use <code>numprocs=1</code>.</p>
+<h2>Step 8: The scheduler</h2>
+<pre><code class="language-bash">crontab -e
+</code></pre>
+<pre><code>* * * * * cd /var/www/myapp &amp;&amp; php artisan schedule:run &gt;&gt; /dev/null 2&gt;&amp;1
+</code></pre>
+<h2>Step 9: A simple deploy script</h2>
+<p>Save as <code>/var/www/myapp/deploy.sh</code>:</p>
+<pre><code class="language-bash">#!/usr/bin/env bash
+set -e
+cd /var/www/myapp
+php artisan down --retry=15 || true
+git pull origin main
+composer install --no-dev --optimize-autoloader --no-interaction
+php artisan migrate --force
+php artisan optimize
+sudo systemctl reload php8.3-fpm
+php artisan queue:restart
+php artisan up
+</code></pre>
+<p>Allow the reload without a password by adding to <code>sudo visudo</code>:</p>
+<pre><code>deploy ALL=NOPASSWD: /bin/systemctl reload php8.3-fpm
+</code></pre>
+<p>This has a few seconds of maintenance mode. For true zero downtime, use release folders with a symlink swap (Deployer, Envoyer, Forge, or Ploi do this for you).</p>
+<h2>Step 10: Backups and monitoring</h2>
+<ul>
+<li>Turn on <strong>automatic backups/snapshots</strong> in the Hostinger panel.</li>
+<li>Dump the database nightly offsite, e.g. with <code>spatie/laravel-backup</code> to S3-compatible storage.</li>
+<li>Watch <code>storage/logs/laravel.log</code>, and add free uptime monitoring.</li>
+<li>Run <code>sudo apt upgrade</code> regularly, or enable <code>unattended-upgrades</code> for security patches.</li>
+</ul>
+<h2>Troubleshooting</h2>
+<ul>
+<li><strong>502 Bad Gateway:</strong> PHP-FPM isn&#39;t running or the socket path is wrong. Check <code>systemctl status php8.3-fpm</code>.</li>
+<li><strong>500 with a blank page:</strong> permissions on <code>storage/</code> or <code>bootstrap/cache</code>, or a missing <code>APP_KEY</code>. Check <code>storage/logs/laravel.log</code>.</li>
+<li><strong>Code changes don&#39;t show:</strong> OPcache with <code>validate_timestamps=0</code>, reload PHP-FPM.</li>
+<li><strong>Jobs stuck:</strong> <code>sudo supervisorctl status</code>, then <code>php artisan queue:restart</code> after every deploy.</li>
+</ul>
+<h2>Step 11: Production hardening checklist</h2>
+<p>Before you announce the launch, run through this list. Each item takes a minute or two and prevents the most common production incidents I&#39;ve seen on Laravel servers:</p>
+<ul>
+<li><strong>Swap file.</strong> Small VPS plans can run out of memory during <code>composer install</code>. Add 1-2 GB of swap: <code>sudo fallocate -l 2G /swapfile &amp;&amp; sudo chmod 600 /swapfile &amp;&amp; sudo mkswap /swapfile &amp;&amp; sudo swapon /swapfile</code>, then add it to <code>/etc/fstab</code>.</li>
+<li><strong>Fail2ban.</strong> <code>sudo apt install fail2ban</code> blocks IPs that brute-force SSH. With key-only login you&#39;re already safe, but it keeps logs clean.</li>
+<li><strong>Log rotation.</strong> Set <code>LOG_CHANNEL=daily</code> and <code>LOG_DAILY_DAYS=14</code> in <code>.env</code> so <code>storage/logs</code> doesn&#39;t fill the disk.</li>
+<li><strong>PHP-FPM pool size.</strong> In <code>/etc/php/8.3/fpm/pool.d/www.conf</code>, set <code>pm.max_children</code> based on RAM: roughly (available RAM for PHP) ÷ (average PHP process size, often 40-80 MB).</li>
+<li><strong>MySQL memory.</strong> On a 2-4 GB server, set <code>innodb_buffer_pool_size</code> to about 25-40% of RAM so MySQL and PHP don&#39;t fight for memory.</li>
+<li><strong>Health check route.</strong> Laravel 11+ ships a <code>/up</code> route, point your uptime monitor at it.</li>
+<li><strong>Test a restore.</strong> A backup you&#39;ve never restored is a hope, not a backup. Restore a database dump to a local machine once.</li>
+</ul>
+<p>With these in place, a single modest VPS comfortably serves thousands of daily users for a typical Laravel CRUD or API app.</p>
+<h2>Is a VPS right for you?</h2>
+<p>If you followed this and enjoyed it, a <!-- AFFILIATE:hostinger --><a href="https://www.hostinger.com/vps-hosting" rel="sponsored noopener" target="_blank">Hostinger VPS</a> will give you excellent value. If you&#39;d rather never touch <code>sshd_config</code>, look at a managed option like <!-- AFFILIATE:cloudways --><a href="https://www.cloudways.com/" rel="sponsored noopener" target="_blank">Cloudways</a> or put <!-- AFFILIATE:ploi --><a href="https://ploi.io/" rel="sponsored noopener" target="_blank">Ploi</a> / Laravel Forge on top of your VPS to automate steps 2-9. My <a href="/laravel-hosting-notes/reviews/best-hosting-for-laravel/">comparison of Laravel hosting options</a> covers the trade-offs.</p>
+</article></main><footer><p>&copy; 2026 Ahmed Esa · <a href="/laravel-hosting-notes/about/">About</a> · <a href="/laravel-hosting-notes/privacy/">Privacy</a> · <a href="/laravel-hosting-notes/disclosure/">Affiliate disclosure</a></p></footer></body></html>

@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Laravel Forge vs Ploi vs Cloudways: Which Should You Use to Host Laravel? | Laravel Hosting Notes</title><meta name="description" content="An honest comparison of Laravel Forge, Ploi and Cloudways for deploying Laravel apps: features, pricing model, control, and which fits freelancers, agencies and SaaS."><link rel="stylesheet" href="/laravel-hosting-notes/style.css"></head><body><header><a class="brand" href="/laravel-hosting-notes/">Laravel Hosting Notes</a><nav><a href="/laravel-hosting-notes/">Articles</a><a href="/laravel-hosting-notes/about/">About</a></nav></header><main><article><p class="meta">By Ahmed Esa</p><h1>Laravel Forge vs Ploi vs Cloudways: Which Should You Use to Host Laravel?</h1><aside class="disclosure"><strong>Affiliate disclosure:</strong> some links in this article are affiliate links. If you sign up through them I may earn a commission at no extra cost to you. It doesn't change what I recommend, and I list the downsides too. <a href="/laravel-hosting-notes/disclosure/">More details</a>.</aside><p>Once you&#39;ve outgrown &quot;FTP the files to shared hosting,&quot; you have three popular ways to run Laravel in production without hand-configuring every server:</p>
+<ul>
+<li><strong>Laravel Forge</strong>, the official server management tool from the Laravel team.</li>
+<li><strong>Ploi</strong>, an independent, Laravel-friendly server panel, often cheaper.</li>
+<li><strong>Cloudways</strong>, a managed hosting platform that rents the server <em>and</em> manages it.</li>
+</ul>
+<p>They&#39;re often compared, but they&#39;re not the same kind of product. Getting that distinction right saves you money.</p>
+<h2>The key difference: who owns the server?</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Forge</th>
+<th>Ploi</th>
+<th>Cloudways</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>What you pay for</td>
+<td>Management software</td>
+<td>Management software</td>
+<td>Server + management, bundled</td>
+</tr>
+<tr>
+<td>Where&#39;s the server?</td>
+<td>Your own account (DigitalOcean, Hetzner, AWS, Vultr, Hostinger VPS, any Ubuntu box)</td>
+<td>Your own account (same idea)</td>
+<td>Cloudways&#39; account on DO/Vultr/Linode/AWS/GCP</td>
+</tr>
+<tr>
+<td>Root access</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No (limited SSH)</td>
+</tr>
+<tr>
+<td>Billing</td>
+<td>Tool subscription + separate server bill</td>
+<td>Tool subscription + separate server bill</td>
+<td>One monthly bill</td>
+</tr>
+</tbody></table>
+<p>With <strong>Forge or Ploi</strong>, you rent a VPS directly from a provider like <!-- AFFILIATE:digitalocean --><a href="https://www.digitalocean.com/" rel="sponsored noopener" target="_blank">DigitalOcean</a> or <!-- AFFILIATE:hostinger --><a href="https://www.hostinger.com/vps-hosting" rel="sponsored noopener" target="_blank">Hostinger</a>, connect it, and the panel installs and configures Nginx, PHP, MySQL/Postgres, Redis, SSL, workers and deploy scripts over SSH. You keep full root.</p>
+<p>With <strong>Cloudways</strong>, you never deal with the provider directly. You pick a cloud and server size in Cloudways and get a managed environment, more hands-off, less control.</p>
+<h2>Laravel Forge</h2>
+<p><strong>Strengths</strong></p>
+<ul>
+<li><strong>Built by the Laravel team.</strong> New Laravel features (Octane, Reverb, Horizon, Pulse) tend to be supported quickly.</li>
+<li><strong>Polished deploy flow:</strong> push-to-deploy from GitHub/GitLab/Bitbucket, editable deploy scripts, environment editor, and zero-downtime deployments.</li>
+<li><strong>Queue workers, scheduler, daemons, SSL, firewall rules</strong>, all from the dashboard.</li>
+<li><strong>Server types</strong> for app, web, worker, database, cache and load balancer roles, which helps when you split a growing app across machines.</li>
+<li>Huge community: nearly every Laravel tutorial assumes Forge is an option.</li>
+</ul>
+<p><strong>Weaknesses</strong></p>
+<ul>
+<li><strong>Price</strong>, it&#39;s a subscription on top of your server costs. For a single hobby app, that can exceed the server bill.</li>
+<li><strong>Server-focused:</strong> you still own patching decisions, capacity planning and backups configuration (Forge helps, but the server is yours).</li>
+</ul>
+<p><strong>Best for:</strong> professional Laravel developers and teams who want the &quot;official&quot; path and run several servers.</p>
+<h2>Ploi</h2>
+<p><!-- AFFILIATE:ploi --><a href="https://ploi.io/" rel="sponsored noopener" target="_blank">Try Ploi</a></p>
+<p><strong>Strengths</strong></p>
+<ul>
+<li><strong>Covers most of what Forge does:</strong> server provisioning, sites, SSL, queue workers, cron, zero-downtime deploys, database management, and backups.</li>
+<li><strong>Often cheaper</strong>, with a free tier for a single server (check current limits on their pricing page).</li>
+<li><strong>Extra conveniences</strong> many users like, such as built-in file and database backups to external storage and status pages.</li>
+<li><strong>Works with any Ubuntu VPS</strong>, including budget providers.</li>
+<li>European company with GDPR-friendly positioning, which matters to some clients.</li>
+</ul>
+<p><strong>Weaknesses</strong></p>
+<ul>
+<li><strong>Smaller community</strong> than Forge; fewer tutorials reference it, although the UI is self-explanatory.</li>
+<li><strong>Not &quot;official&quot;</strong>, so brand-new Laravel ecosystem features might land a little later.</li>
+</ul>
+<p><strong>Best for:</strong> freelancers and small agencies who want Forge-style automation at a lower price, and anyone on a budget running a few servers.</p>
+<h2>Cloudways</h2>
+<p><!-- AFFILIATE:cloudways --><a href="https://www.cloudways.com/" rel="sponsored noopener" target="_blank">Try Cloudways</a></p>
+<p><strong>Strengths</strong></p>
+<ul>
+<li><strong>Truly managed.</strong> OS patching, server-level security, firewalls and stack updates are handled for you.</li>
+<li><strong>One bill, monthly, pay-as-you-go.</strong> Easy to pass through to clients.</li>
+<li><strong>Built-in backups, staging, cloning and team access</strong>, great for agency workflows.</li>
+<li><strong>Choice of infrastructure:</strong> move from DigitalOcean to AWS without learning AWS.</li>
+<li><strong>Laravel works fine</strong> as a custom PHP app: set the web root to <code>public/</code>, deploy via Git, and add Supervisor jobs for queues.</li>
+</ul>
+<p><strong>Weaknesses</strong></p>
+<ul>
+<li><strong>Less control.</strong> No full root; custom PHP extensions, Docker, Octane/Swoole setups and unusual Nginx configs can be hard or impossible.</li>
+<li><strong>More expensive per unit of CPU/RAM</strong> than renting the same server yourself + Ploi/Forge.</li>
+<li><strong>WordPress-first flavour.</strong> The platform is excellent for PHP generally, but Laravel-specific niceties (Horizon UI integration, Octane) aren&#39;t first-class.</li>
+</ul>
+<p><strong>Best for:</strong> agencies and freelancers who host many client sites, don&#39;t want ops work, and value support and one-click staging over root access.</p>
+<h2>Cost comparison (how to think about it)</h2>
+<p>Prices change, so instead of quoting figures that will be stale, compare like this for <strong>one small production app</strong>:</p>
+<ul>
+<li><strong>Forge route:</strong> Forge subscription + VPS (e.g. a 2 GB <!-- AFFILIATE:digitalocean --><a href="https://www.digitalocean.com/" rel="sponsored noopener" target="_blank">DigitalOcean Droplet</a> or <!-- AFFILIATE:hostinger --><a href="https://www.hostinger.com/vps-hosting" rel="sponsored noopener" target="_blank">Hostinger VPS</a>) + backups.</li>
+<li><strong>Ploi route:</strong> Ploi plan (possibly free for one server) + the same VPS.</li>
+<li><strong>Cloudways route:</strong> one Cloudways server plan (management included) + optional add-ons.</li>
+</ul>
+<p>With <strong>one app</strong>, Ploi + a budget VPS is typically cheapest. With <strong>many client sites on one server</strong>, Forge/Ploi costs are spread thin and both get very cost-effective. Cloudways usually costs the most per resource, but you&#39;re paying to not do ops work, if your hourly rate is high, that can still be the cheapest option overall.</p>
+<h2>Feature checklist for Laravel</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Forge</th>
+<th>Ploi</th>
+<th>Cloudways</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Push-to-deploy from Git</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Zero-downtime deploys</td>
+<td>✅</td>
+<td>✅</td>
+<td>⚠️ manual/scripted</td>
+</tr>
+<tr>
+<td>Queue workers (Supervisor)</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Scheduler/cron</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Horizon / Octane friendly</td>
+<td>✅</td>
+<td>✅</td>
+<td>⚠️ limited</td>
+</tr>
+<tr>
+<td>Full root access</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>OS patching done for you</td>
+<td>❌ (your server)</td>
+<td>❌ (your server)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Built-in staging</td>
+<td>⚠️ (via extra site)</td>
+<td>⚠️ (via extra site)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Choose any VPS provider</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌ (their list)</td>
+</tr>
+</tbody></table>
+<h2>My recommendation</h2>
+<ul>
+<li><strong>Solo developer or small SaaS on a budget:</strong> <!-- AFFILIATE:ploi --><a href="https://ploi.io/" rel="sponsored noopener" target="_blank">Ploi</a> + a <!-- AFFILIATE:hostinger --><a href="https://www.hostinger.com/vps-hosting" rel="sponsored noopener" target="_blank">Hostinger VPS</a> or <!-- AFFILIATE:digitalocean --><a href="https://www.digitalocean.com/" rel="sponsored noopener" target="_blank">DigitalOcean Droplet</a>. Maximum control, minimal cost.</li>
+<li><strong>Professional Laravel team running multiple servers:</strong> <strong>Laravel Forge</strong> + <!-- AFFILIATE:digitalocean --><a href="https://www.digitalocean.com/" rel="sponsored noopener" target="_blank">DigitalOcean</a>. The official tooling and ecosystem support pay off.</li>
+<li><strong>Agency hosting many client projects with no in-house ops:</strong> <!-- AFFILIATE:cloudways --><a href="https://www.cloudways.com/" rel="sponsored noopener" target="_blank">Cloudways</a>. Managed, one bill, easy staging.</li>
+</ul>
+<p>And if you want to understand what these tools actually do under the hood (highly recommended before paying for any of them), follow my <a href="/laravel-hosting-notes/tutorials/deploy-laravel-hostinger-vps/">manual guide to deploying Laravel on a VPS</a>. Once you&#39;ve done it by hand once, you&#39;ll know exactly which automation is worth paying for.</p>
+<h2>FAQ</h2>
+<p><strong>Can I switch from Cloudways to Forge/Ploi later?</strong>
+Yes. Laravel apps are portable: provision a new server, deploy from Git, migrate the database dump and storage files, switch DNS.</p>
+<p><strong>Does Forge or Ploi host my app?</strong>
+No. They manage a server you rent from someone else. You get two bills.</p>
+<p><strong>Is Laravel Cloud a replacement for all three?</strong>
+It&#39;s a fully-managed, serverless-style option from the Laravel team. It&#39;s worth evaluating for new projects, but pricing is usage-based, so model your costs first.</p>
+<p><strong>Which is best for beginners?</strong>
+Cloudways is the gentlest learning curve. Ploi is the best way to learn server concepts with a safety net.</p>
+</article></main><footer><p>&copy; 2026 Ahmed Esa · <a href="/laravel-hosting-notes/about/">About</a> · <a href="/laravel-hosting-notes/privacy/">Privacy</a> · <a href="/laravel-hosting-notes/disclosure/">Affiliate disclosure</a></p></footer></body></html>

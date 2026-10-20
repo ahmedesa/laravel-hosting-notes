@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ahmedesa.github.io/laravel-hosting-notes/sitemap.xml
